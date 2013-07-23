@@ -1000,7 +1000,7 @@ static StringRef ConvertAtomicSynchScope(SynchronizationScope SynchScope) {
 
 // generateInstruction - This member is called for each Instruction in a function.
 std::string CppWriter::generateInstruction(const Instruction *I) {
-  std::string text = "UNKNOWN_INSTRUCTION";
+  std::string text = "NYI: " + std::string(I->getOpcodeName());
   std::string bbname = "NO_BBNAME";
   std::string iName(getCppName(I));
 
@@ -1023,18 +1023,18 @@ std::string CppWriter::generateInstruction(const Instruction *I) {
   }
   case Instruction::Br: {
     const BranchInst* br = cast<BranchInst>(I);
-    Out << "BranchInst::Create(" ;
+    text = "// BranchInst::Create(" ;
     if (br->getNumOperands() == 3) {
-      Out << opNames[2] << ", "
-          << opNames[1] << ", "
-          << opNames[0] << ", ";
+      text += opNames[2] + ", "
+            + opNames[1] + ", "
+            + opNames[0] + ", ";
 
     } else if (br->getNumOperands() == 1) {
-      Out << opNames[0] << ", ";
+      text += opNames[0] + ", ";
     } else {
       error("Branch with 2 operands?");
     }
-    Out << bbname << ");";
+    text += bbname + ");";
     break;
   }
   case Instruction::Switch: {
@@ -1174,23 +1174,22 @@ std::string CppWriter::generateInstruction(const Instruction *I) {
     break;
   }
   case Instruction::ICmp: {
-    Out << "ICmpInst* " << iName << " = new ICmpInst(*" << bbname << ", ";
+    text = "var " + iName + " = (" + opNames[0] + "|0)";
     switch (cast<ICmpInst>(I)->getPredicate()) {
-    case ICmpInst::ICMP_EQ:  Out << "ICmpInst::ICMP_EQ";  break;
-    case ICmpInst::ICMP_NE:  Out << "ICmpInst::ICMP_NE";  break;
-    case ICmpInst::ICMP_ULE: Out << "ICmpInst::ICMP_ULE"; break;
-    case ICmpInst::ICMP_SLE: Out << "ICmpInst::ICMP_SLE"; break;
-    case ICmpInst::ICMP_UGE: Out << "ICmpInst::ICMP_UGE"; break;
-    case ICmpInst::ICMP_SGE: Out << "ICmpInst::ICMP_SGE"; break;
-    case ICmpInst::ICMP_ULT: Out << "ICmpInst::ICMP_ULT"; break;
-    case ICmpInst::ICMP_SLT: Out << "ICmpInst::ICMP_SLT"; break;
-    case ICmpInst::ICMP_UGT: Out << "ICmpInst::ICMP_UGT"; break;
-    case ICmpInst::ICMP_SGT: Out << "ICmpInst::ICMP_SGT"; break;
-    default: Out << "ICmpInst::BAD_ICMP_PREDICATE"; break;
+    case ICmpInst::ICMP_EQ:  text += "==";  break;
+    case ICmpInst::ICMP_NE:  text += "!=";  break;
+    // TODO: handle signed and unsigned
+    case ICmpInst::ICMP_ULE: text += "<="; break;
+    case ICmpInst::ICMP_SLE: text += "<="; break;
+    case ICmpInst::ICMP_UGE: text += ">="; break;
+    case ICmpInst::ICMP_SGE: text += ">="; break;
+    case ICmpInst::ICMP_ULT: text += "<"; break;
+    case ICmpInst::ICMP_SLT: text += "<"; break;
+    case ICmpInst::ICMP_UGT: text += ">"; break;
+    case ICmpInst::ICMP_SGT: text += ">"; break;
+    default: text += "ICmpInst::BAD_ICMP_PREDICATE"; break;
     }
-    Out << ", " << opNames[0] << ", " << opNames[1] << ", \"";
-    printEscapedString(I->getName());
-    Out << "\");";
+    text += "(" + opNames[1] + "|0);";
     break;
   }
   case Instruction::Alloca: {
@@ -1439,7 +1438,6 @@ std::string CppWriter::generateInstruction(const Instruction *I) {
   }
   }
   DefinedValues.insert(I);
-  nl(Out);
   delete [] opNames;
   return text;
 }
