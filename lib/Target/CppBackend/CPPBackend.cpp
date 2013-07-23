@@ -1647,9 +1647,28 @@ void CppWriter::printFunctionBody(const Function *F) {
   // Create branchings
   for (Function::const_iterator BI = F->begin(), BE = F->end();
        BI != BE; ++BI) {
-    for (BasicBlock::const_iterator I = BI->begin(), E = BI->end();
-         I != E; ++I) {
-      // if I is a branch, do something XXX
+    const TerminatorInst *TI = BI->getTerminator();
+    switch (TI->getOpcode()) {
+    default: {
+      //error("Invalid branch instruction");
+      break;
+    }
+    case Instruction::Br: {
+      const BranchInst* br = cast<BranchInst>(TI);
+      if (br->getNumOperands() == 3) {
+        BasicBlock *S0 = br->getSuccessor(0);
+        BasicBlock *S1 = br->getSuccessor(1);
+        LLVMToRelooper[&*BI]->AddBranchTo(LLVMToRelooper[&*S0], NULL);
+        LLVMToRelooper[&*BI]->AddBranchTo(LLVMToRelooper[&*S1],
+            getOpName(TI->getOperand(0)).c_str());
+      } else if (br->getNumOperands() == 1) {
+        BasicBlock *S = br->getSuccessor(0);
+        LLVMToRelooper[&*BI]->AddBranchTo(LLVMToRelooper[&*S], NULL);
+      } else {
+        error("Branch with 2 operands?");
+      }
+      break;
+    }
     }
   }
 
