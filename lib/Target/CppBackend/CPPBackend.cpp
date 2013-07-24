@@ -1198,21 +1198,7 @@ std::string CppWriter::generateInstruction(const Instruction *I) {
     break;
   }
   case Instruction::Load: {
-    const LoadInst* load = cast<LoadInst>(I);
-    Out << "LoadInst* " << iName << " = new LoadInst("
-        << opNames[0] << ", \"";
-    printEscapedString(load->getName());
-    Out << "\", " << (load->isVolatile() ? "true" : "false" )
-        << ", " << bbname << ");";
-    if (load->getAlignment())
-      nl(Out) << iName << "->setAlignment("
-              << load->getAlignment() << ");";
-    if (load->isAtomic()) {
-      StringRef Ordering = ConvertAtomicOrdering(load->getOrdering());
-      StringRef CrossThread = ConvertAtomicSynchScope(load->getSynchScope());
-      nl(Out) << iName << "->setAtomic("
-              << Ordering << ", " << CrossThread << ");";
-    }
+    text = "var " + iName + " = HEAP32[" + opNames[0] + ">>2];";
     break;
   }
   case Instruction::Store: {
@@ -1296,7 +1282,13 @@ std::string CppWriter::generateInstruction(const Instruction *I) {
   }
   case Instruction::Call: {
     const CallInst* call = cast<CallInst>(I);
-    text = std::string(call->getName().data()) + " = " + opNames[call->getNumArgOperands()] + "(" + opNames[0] + ");";
+    const int numArgs = call->getNumArgOperands();
+    text = std::string(call->getName().data()) + " = " + opNames[numArgs] + "(";
+    for (int i = 0; i < numArgs; i++) {
+      text += opNames[i];
+      if (i < numArgs - 1) text += ", ";
+    }
+    text += ");";
     break;
   }
   case Instruction::Select: {
@@ -1750,9 +1742,9 @@ void CppWriter::printModuleBody() {
        I != E; ++I) {
     if (!I->isDeclaration()) {
       Out << "function _" << I->getName() << "() {";
-      nl(Out,1);
+      nl(Out);
       printFunctionBody(I);
-      nl(Out,-1) << "}";
+      nl(Out) << "}";
       nl(Out);
     }
   }
